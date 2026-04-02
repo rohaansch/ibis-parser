@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eda-ibis-parser"
+version = "0.1.0"
+description = "A pure-Python parser for IBIS (.ibs) files — extracts I/O buffer model data including pin, component, and waveform information for EDA signal integrity workflows"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Rohan Chadhury", email = "rohaanshahid@gmail.com" }
+]
+requires-python = ">=3.7"
+keywords = ["eda", "ibis", "ibs", "signal integrity", "vlsi", "semiconductor", "i/o model", "simulation", "pad library", "buffer model", "parser"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+ibis-parser = "ibis_parser.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/rohaansch/ibis-parser"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ibis_parser*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
