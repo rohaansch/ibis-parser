@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eda-ibis-parser"
-version = "0.1.0"
+version = "0.1.1"
 description = "A pure-Python parser for IBIS (.ibs) files — extracts I/O buffer model data including pin, component, and waveform information for EDA signal integrity workflows"
 readme = "README.md"
 license = { file = "LICENSE" }
