@@ -21,9 +21,45 @@ from __future__ import annotations
 import os
 import re
 import logging
-from requests.structures import CaseInsensitiveDict
+from collections.abc import MutableMapping
 from textwrap import fill
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
+
+
+# ---------------------------------------------------------------------------
+# CaseInsensitiveDict
+# ---------------------------------------------------------------------------
+
+class CaseInsensitiveDict(MutableMapping):
+    # based on https://stackoverflow.com/a/3296782
+    # _s is a dict mapping the lowercase key to the original key
+    # _d is the actual dict using the original key
+    def __init__(self, d={}):
+        self._d = d
+        self._s = dict((k.lower(), k) for k in d)
+
+    def __contains__(self, k):
+        return k.lower() in self._s
+
+    def __len__(self):
+        return len(self._s)
+
+    def __iter__(self):
+        return iter(self._s)
+
+    def __getitem__(self, k):
+        return self._d[self._s[k.lower()]]
+
+    def __setitem__(self, k, value):
+        self._s[k.lower()] = k
+        self._d[self._s[k.lower()]] = value
+
+    def __delitem__(self, k):
+        del self._d[self._s[k.lower()]]
+        del self._s[k.lower()]
+
+    def actual_key_case(self, k):
+        return self._s.get(k.lower())
 
 
 # ---------------------------------------------------------------------------
