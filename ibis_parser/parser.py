@@ -513,7 +513,7 @@ class IBISBlock(Navigation):
             )
             return 1
 
-        # Comment
+        # Comment line
         mo = re.match(r'(?P<text>\|.*)', line)
         if self._can_have_comment and mo:
             self._add_node(
@@ -522,6 +522,9 @@ class IBISBlock(Navigation):
                 node_type=self._can_have_comment,
             )
             return 1
+
+        # Strip trailing comments before proceeding
+        line = re.sub(r'(?P<text>.*?)(?P<comment>\s*\|.*)', r'\g<text>', line)
 
         # Own block header
         mo = re.fullmatch(rf'\[(?P<block_name>{self.name})\]\s*(?P<text>.*)', line)
