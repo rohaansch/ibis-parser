@@ -22,7 +22,7 @@ for model in ibis.get_blocks('Model'):
 # Model: MIN
 
 # --- 5. Read C_comp (three-corner dictionary) ---
-model = ibis.get_block('Model')
+model = ibis.get_block('Model', title='PAD_PA0_PB0_PS1')
 c_comp = model.C_comp.get()
 print(f"C_comp typ={c_comp['typ']} min={c_comp['min']} max={c_comp['max']}")
 
