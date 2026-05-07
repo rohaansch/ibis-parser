@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 import re
 import logging
+from requests.structures import CaseInsensitiveDict
 from textwrap import fill
 from typing import Any, Dict, List, Optional
 
@@ -69,7 +70,7 @@ class Navigation:
 
         matched: List[IBISBlock] = []
         for b in self.blocks:
-            if re.fullmatch(block_name_regexp, b.name):
+            if re.fullmatch(block_name_regexp, b.name, re.I):
                 hits = 0
                 for key, val in kwargs.items():
                     node = getattr(b, key, None)
@@ -802,7 +803,7 @@ class IBISParser(Navigation):
     _total_line_length = 80
     _first_block_name  = 'HEADER COMMENT'
 
-    _keyword_class_map: Dict[str, type] = {
+    _keyword_class_map: CaseInsensitiveDict[str, type] = CaseInsensitiveDict({
         'HEADER COMMENT'            : CommentBlock,
         'IBIS Ver'                  : TextBlock,
         'Comment Char'              : TextBlock,  # ignored, assume always '|'
@@ -838,9 +839,9 @@ class IBISParser(Navigation):
         'Rising Waveform'           : VTTableBlock,
         'Falling Waveform'          : VTTableBlock,
         'End'                       : TextBlock,
-    }
+    })
 
-    _subblock_to_parent_map: Dict[str, list] = {
+    _subblock_to_parent_map: CaseInsensitiveDict[str, list] = CaseInsensitiveDict({
         'Manufacturer'          : ['Component'],
         'Package'               : ['Component'],
         'Pin'                   : ['Component'],
@@ -861,10 +862,10 @@ class IBISParser(Navigation):
         'Rising Waveform'       : ['Model', 'Submodel'],
         'Falling Waveform'      : ['Model', 'Submodel'],
         'Add Submodel'          : ['Model'],
-    }
+    })
 
     _parent_block_names = set(
-        name for parents in _subblock_to_parent_map.values() for name in parents
+        name.lower() for parents in _subblock_to_parent_map.values() for name in parents
     )
 
     def __init__(self, ibis_file_path: str) -> None:
@@ -875,7 +876,7 @@ class IBISParser(Navigation):
 
         self._cur_block_content: list = []
         self._cur_block_name: str = IBISParser._first_block_name
-        self._parent_blocks: dict = {}
+        self._parent_blocks: CaseInsensitiveDict = CaseInsensitiveDict()
 
     # ------------------------------------------------------------------
     # Public API
@@ -898,7 +899,7 @@ class IBISParser(Navigation):
             self._cur_block_content = []
             self._cur_block_name = IBISParser._first_block_name
             self._cur_block_start = 0
-            self._parent_blocks = {}
+            self._parent_blocks = CaseInsensitiveDict()
 
             # non-greedy match for keywords in []
             block_pat = re.compile(r'\[(?P<name>.+?)\]', re.I)
@@ -1053,7 +1054,7 @@ class IBISParser(Navigation):
         block = block_class(name, parent, line_number_range)
         parent.blocks.append(block)
 
-        if name in IBISParser._parent_block_names:
+        if name.lower() in IBISParser._parent_block_names:
             self._parent_blocks[name] = block
 
         for rel, line in enumerate(self._cur_block_content):
