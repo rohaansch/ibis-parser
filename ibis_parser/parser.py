@@ -777,7 +777,8 @@ class IBISParser(Navigation):
     ============================================  =======================
     ``HEADER COMMENT``                            CommentBlock
     ``IBIS Ver``, ``File Name``, ``File Rev``,    TextBlock
-    ``Date``, ``Source``, ``Manufacturer``
+    ``Date``, ``Source``, ``Manufacturer``,
+    ``Comment Char``
     ``Notes``, ``Disclaimer``                     WrapIndentTextBlock
     ``Copyright``                                 WrapTextBlock
     ``Component``                                 TitledTextBlock
@@ -801,6 +802,7 @@ class IBISParser(Navigation):
     _keyword_class_map: Dict[str, type] = {
         'HEADER COMMENT'            : CommentBlock,
         'IBIS Ver'                  : TextBlock,
+        'Comment Char'              : TextBlock,  # ignored, assume always '|'
         'File Name'                 : TextBlock,
         'File Rev'                  : TextBlock,
         'Date'                      : TextBlock,
