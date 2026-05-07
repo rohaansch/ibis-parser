@@ -1006,6 +1006,9 @@ class IBISParser(Navigation):
         s = re.sub(r'[A-Za-z]$', '', string)
         if IBISParser.is_number(s):
             return float(s)
+        # 4. Translate NA (no data) to NaN
+        if string == 'NA':
+            return float('nan')
         raise IBISError(f"Cannot convert '{string}' to a number.")
 
     @staticmethod
