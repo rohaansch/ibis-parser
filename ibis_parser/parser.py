@@ -897,7 +897,8 @@ class IBISParser(Navigation):
             self._cur_block_start = 0
             self._parent_blocks = {}
 
-            block_pat = re.compile(r'\[(?P<name>.+)\]', re.I)
+            # non-greedy match for keywords in []
+            block_pat = re.compile(r'\[(?P<name>.+?)\]', re.I)
             uncomment_pat = re.compile(
                 r'\|\s*(\[(?:Source|Notes|Disclaimer|Copyright)\])'
             )
