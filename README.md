@@ -52,7 +52,7 @@ print(comp.title)               # → n344_n1a_stb
 
 # Get manufacturer
 mfr = comp.get_block('Manufacturer')
-print(mfr.value1.get())         # → XYZ Semiconductor
+print(mfr.value.get())         # → XYZ Semiconductor
 
 # List all models
 for model in ibis.get_blocks('Model'):

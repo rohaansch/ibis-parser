@@ -21,8 +21,45 @@ from __future__ import annotations
 import os
 import re
 import logging
+from collections.abc import MutableMapping
 from textwrap import fill
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
+
+
+# ---------------------------------------------------------------------------
+# CaseInsensitiveDict
+# ---------------------------------------------------------------------------
+
+class CaseInsensitiveDict(MutableMapping):
+    # based on https://stackoverflow.com/a/3296782
+    # _s is a dict mapping the lowercase key to the original key
+    # _d is the actual dict using the original key
+    def __init__(self, d={}):
+        self._d = d
+        self._s = dict((k.lower(), k) for k in d)
+
+    def __contains__(self, k):
+        return k.lower() in self._s
+
+    def __len__(self):
+        return len(self._s)
+
+    def __iter__(self):
+        return iter(self._s)
+
+    def __getitem__(self, k):
+        return self._d[self._s[k.lower()]]
+
+    def __setitem__(self, k, value):
+        self._s[k.lower()] = k
+        self._d[self._s[k.lower()]] = value
+
+    def __delitem__(self, k):
+        del self._d[self._s[k.lower()]]
+        del self._s[k.lower()]
+
+    def actual_key_case(self, k):
+        return self._s.get(k.lower())
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +106,7 @@ class Navigation:
 
         matched: List[IBISBlock] = []
         for b in self.blocks:
-            if re.fullmatch(block_name_regexp, b.name):
+            if re.fullmatch(block_name_regexp, b.name, re.I):
                 hits = 0
                 for key, val in kwargs.items():
                     node = getattr(b, key, None)
@@ -513,7 +550,7 @@ class IBISBlock(Navigation):
             )
             return 1
 
-        # Comment
+        # Comment line
         mo = re.match(r'(?P<text>\|.*)', line)
         if self._can_have_comment and mo:
             self._add_node(
@@ -522,6 +559,9 @@ class IBISBlock(Navigation):
                 node_type=self._can_have_comment,
             )
             return 1
+
+        # Strip trailing comments before proceeding
+        line = re.sub(r'(?P<text>.*?)(?P<comment>\s*\|.*)', r'\g<text>', line)
 
         # Own block header
         mo = re.fullmatch(rf'\[(?P<block_name>{self.name})\]\s*(?P<text>.*)', line)
@@ -777,7 +817,8 @@ class IBISParser(Navigation):
     ============================================  =======================
     ``HEADER COMMENT``                            CommentBlock
     ``IBIS Ver``, ``File Name``, ``File Rev``,    TextBlock
-    ``Date``, ``Source``, ``Manufacturer``
+    ``Date``, ``Source``, ``Manufacturer``,
+    ``Comment Char``
     ``Notes``, ``Disclaimer``                     WrapIndentTextBlock
     ``Copyright``                                 WrapTextBlock
     ``Component``                                 TitledTextBlock
@@ -798,9 +839,10 @@ class IBISParser(Navigation):
     _total_line_length = 80
     _first_block_name  = 'HEADER COMMENT'
 
-    _keyword_class_map: Dict[str, type] = {
+    _keyword_class_map: CaseInsensitiveDict[str, type] = CaseInsensitiveDict({
         'HEADER COMMENT'            : CommentBlock,
         'IBIS Ver'                  : TextBlock,
+        'Comment Char'              : TextBlock,  # ignored, assume always '|'
         'File Name'                 : TextBlock,
         'File Rev'                  : TextBlock,
         'Date'                      : TextBlock,
@@ -833,9 +875,9 @@ class IBISParser(Navigation):
         'Rising Waveform'           : VTTableBlock,
         'Falling Waveform'          : VTTableBlock,
         'End'                       : TextBlock,
-    }
+    })
 
-    _subblock_to_parent_map: Dict[str, list] = {
+    _subblock_to_parent_map: CaseInsensitiveDict[str, list] = CaseInsensitiveDict({
         'Manufacturer'          : ['Component'],
         'Package'               : ['Component'],
         'Pin'                   : ['Component'],
@@ -856,10 +898,10 @@ class IBISParser(Navigation):
         'Rising Waveform'       : ['Model', 'Submodel'],
         'Falling Waveform'      : ['Model', 'Submodel'],
         'Add Submodel'          : ['Model'],
-    }
+    })
 
     _parent_block_names = set(
-        name for parents in _subblock_to_parent_map.values() for name in parents
+        name.lower() for parents in _subblock_to_parent_map.values() for name in parents
     )
 
     def __init__(self, ibis_file_path: str) -> None:
@@ -870,7 +912,7 @@ class IBISParser(Navigation):
 
         self._cur_block_content: list = []
         self._cur_block_name: str = IBISParser._first_block_name
-        self._parent_blocks: dict = {}
+        self._parent_blocks: CaseInsensitiveDict = CaseInsensitiveDict()
 
     # ------------------------------------------------------------------
     # Public API
@@ -893,9 +935,10 @@ class IBISParser(Navigation):
             self._cur_block_content = []
             self._cur_block_name = IBISParser._first_block_name
             self._cur_block_start = 0
-            self._parent_blocks = {}
+            self._parent_blocks = CaseInsensitiveDict()
 
-            block_pat = re.compile(r'\[(?P<name>.+)\]', re.I)
+            # non-greedy match for keywords in []
+            block_pat = re.compile(r'\[(?P<name>.+?)\]', re.I)
             uncomment_pat = re.compile(
                 r'\|\s*(\[(?:Source|Notes|Disclaimer|Copyright)\])'
             )
@@ -999,6 +1042,9 @@ class IBISParser(Navigation):
         s = re.sub(r'[A-Za-z]$', '', string)
         if IBISParser.is_number(s):
             return float(s)
+        # 4. Translate NA (no data) to NaN
+        if string == 'NA':
+            return float('nan')
         raise IBISError(f"Cannot convert '{string}' to a number.")
 
     @staticmethod
@@ -1047,7 +1093,7 @@ class IBISParser(Navigation):
         block = block_class(name, parent, line_number_range)
         parent.blocks.append(block)
 
-        if name in IBISParser._parent_block_names:
+        if name.lower() in IBISParser._parent_block_names:
             self._parent_blocks[name] = block
 
         for rel, line in enumerate(self._cur_block_content):
